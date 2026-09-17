@@ -1,0 +1,1292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Siox LinkedIn Post Tracker</title>
+<style>
+:root{
+  --li-blue:#0A66C2;
+  --li-blue-dark:#004182;
+  --li-bg:#F3F2EF;
+  --li-text:#191919;
+  --li-muted:#666666;
+  --li-border:#E0DFDC;
+  --card:#fff;
+  --navy:#1B1F23;
+  --sidebar:260px;
+  --a:#0A66C2;
+  --b:#057642;
+  --c:#A44A15;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:var(--li-bg);color:var(--li-text);min-height:100vh}
+button,select,input{font-family:inherit}
+button{cursor:pointer}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+
+.shell{display:flex;min-height:100vh}
+.sidebar{width:var(--sidebar);background:#fff;border-right:1px solid var(--li-border);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;z-index:30}
+.brand{display:flex;align-items:center;gap:10px;padding:18px 18px 16px;border-bottom:1px solid var(--li-border)}
+.li-mark{width:34px;height:34px;border-radius:4px;background:var(--li-blue);color:#fff;font-weight:800;font-size:20px;display:flex;align-items:center;justify-content:center;letter-spacing:-1px}
+.brand-copy{line-height:1.2}
+.brand-copy strong{display:block;font-size:14px}
+.brand-copy span{font-size:11px;color:var(--li-muted)}
+.nav{padding:10px 10px;display:flex;flex-direction:column;gap:4px}
+.nav-item{display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:none;background:transparent;color:#38434F;padding:10px 12px;border-radius:8px;font-size:14px;font-weight:600}
+.nav-item:hover{background:#F3F2EF}
+.nav-item.active{background:#E8F3FF;color:var(--li-blue)}
+.nav-ico{width:22px;text-align:center;font-size:16px}
+.side-stats{margin:auto 12px 12px;background:var(--li-bg);border-radius:10px;padding:12px}
+.side-stats h4{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--li-muted);margin-bottom:8px}
+.mini-stat{display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:6px 0;border-bottom:1px solid #e8e6e2}
+.mini-stat:last-child{border-bottom:none}
+.mini-stat b{font-size:15px}
+.ga{color:var(--a)} .gb{color:var(--b)} .gc{color:var(--c)}
+.side-user{padding:12px 14px 16px;border-top:1px solid var(--li-border)}
+.side-user label{display:block;font-size:11px;font-weight:700;color:var(--li-muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}
+.side-user input{width:100%;padding:8px 10px;border:1px solid var(--li-border);border-radius:20px;font-size:13px;outline:none;background:#F3F2EF}
+.side-user input:focus{border-color:var(--li-blue);background:#fff}
+.side-user .save{margin-top:8px;width:100%;background:var(--li-blue);color:#fff;border:none;border-radius:20px;padding:8px;font-weight:700;font-size:13px}
+.side-user .save:hover{background:var(--li-blue-dark)}
+.sync{display:flex;align-items:center;gap:6px;margin-top:8px;font-size:11px;color:var(--li-muted);font-weight:600}
+.sync-dot{width:8px;height:8px;border-radius:50%;background:#d1d5db}
+.sync.ok .sync-dot{background:#057642}
+.sync.err .sync-dot{background:#cc1016}
+.sync.pending .sync-dot{background:#b74700}
+
+.main{flex:1;min-width:0}
+.topbar{background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 22px;position:sticky;top:0;z-index:20}
+.menu-btn{display:none;background:transparent;border:none;color:#fff;font-size:22px}
+.top-title{font-size:15px;font-weight:700}
+.top-title span{opacity:.65;font-weight:500;margin-left:8px;font-size:12px}
+.legend{display:flex;gap:8px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);color:#fff;border-radius:20px;padding:4px 9px;font-size:11px;font-weight:600}
+.dot{width:7px;height:7px;border-radius:50%}
+.dot.a{background:#70B5F9} .dot.b{background:#5F9B41} .dot.c{background:#E7A33E} .dot.x{background:#9ca3af}
+
+.view{display:none;padding:18px 22px 32px}
+.view.active{display:block}
+
+.page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:14px}
+.page-head h1{font-size:22px;letter-spacing:-.3px}
+.page-head p{color:var(--li-muted);font-size:13px;margin-top:3px}
+.cal-nav{display:flex;align-items:center;gap:8px}
+.cal-nav-btn{width:34px;height:34px;border-radius:50%;border:1px solid var(--li-border);background:#fff;font-size:16px;color:#38434F}
+.cal-nav-btn:hover{background:#eef3f8;border-color:#cfcfcf}
+.month-display{font-size:16px;font-weight:700;min-width:160px;text-align:center}
+
+.calendar-layout{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(320px,.9fr);gap:16px;align-items:start}
+.card{background:var(--card);border-radius:8px;box-shadow:0 0 0 1px rgba(0,0,0,.08);overflow:hidden}
+.card-pad{padding:14px;overflow-x:auto}
+.dow-row,.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.dow-hdr{text-align:center;font-size:11px;font-weight:700;color:#6b7280;padding:4px 0}
+.dow-hdr.wknd{color:#c4c4c4}
+.day{min-height:92px;border:1px solid #E8E6E2;border-radius:8px;padding:7px;background:#fff;position:relative}
+.day.empty{background:transparent;border-color:transparent}
+.day.wknd{background:#F8F8F8;opacity:.7}
+.day.has-post{cursor:pointer}
+.day.has-post:hover{border-color:var(--li-blue);box-shadow:0 2px 8px rgba(10,102,194,.12)}
+.day.past{opacity:.72}
+.day.today-ring{box-shadow:0 0 0 2px #70B5F9}
+.day.posted{background:#F3FAF3;border-color:#B7D7B9}
+.day.missed{background:#FDF2F2;border-color:#F0B6B6}
+.day-num{display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:700;color:#38434F;margin-bottom:6px}
+.today-pill{font-size:8px;background:var(--li-blue);color:#fff;border-radius:4px;padding:1px 5px}
+.type-pill{display:inline-block;font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;margin-bottom:4px}
+.type-a{background:#E8F3FF;color:var(--a)}
+.type-b{background:#E6F4EA;color:var(--b)}
+.type-c{background:#FFF1E5;color:var(--c)}
+.day-topic{font-size:11px;color:#5e5e5e;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.day-by{font-size:10px;color:#057642;font-weight:700;margin-top:4px}
+
+.post-panel .empty-post{padding:48px 24px;text-align:center;color:var(--li-muted)}
+.empty-post strong{display:block;color:var(--li-text);margin-bottom:6px}
+#drawer{display:none}
+#drawer.open{display:block}
+
+.li-post{background:#fff}
+.li-head{display:flex;gap:10px;padding:14px 14px 8px}
+.avatar{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#0A66C2,#70B5F9);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;flex-shrink:0}
+.li-who{flex:1;min-width:0}
+.li-who h3{font-size:14px;font-weight:700;line-height:1.2}
+.li-who p{font-size:12px;color:var(--li-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.li-who small{font-size:12px;color:var(--li-muted)}
+.close-x,.more{width:32px;height:32px;border:none;background:transparent;border-radius:50%;color:#666;font-size:16px}
+.close-x:hover,.more:hover{background:#F3F2EF}
+.li-status{display:inline-block;font-size:11px;font-weight:700;border-radius:4px;padding:2px 7px;margin:0 14px 8px}
+.st-sched{background:#E8F3FF;color:var(--li-blue)}
+.st-posted{background:#E6F4EA;color:#057642}
+.st-missed{background:#FBE9E7;color:#B74700}
+.li-body{padding:0 14px 12px;font-size:14px;line-height:1.6;white-space:pre-wrap;color:#191919}
+.hash{color:var(--li-blue);font-weight:600}
+.li-react{display:flex;justify-content:space-between;padding:8px 14px;border-top:1px solid #eee;border-bottom:1px solid #eee;color:#666;font-size:12px}
+.li-actions{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid #eee}
+.li-act{background:transparent;border:none;padding:11px 6px;font-size:13px;font-weight:650;color:#666}
+.li-act:hover{background:#F3F2EF;color:#191919}
+.mark-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:12px 14px}
+.mark-btn,.copy-btn{border-radius:20px;border:1px solid var(--li-border);padding:8px 10px;font-size:13px;font-weight:700;background:#fff}
+.copy-btn{background:var(--li-blue);color:#fff;border-color:var(--li-blue)}
+.copy-btn:hover{background:var(--li-blue-dark)}
+.mark-posted{color:#057642;border-color:#B7D7B9;background:#F3FAF3}
+.mark-posted.active,.mark-posted:hover{background:#057642;color:#fff}
+.mark-missed{color:#B74700;border-color:#F0B6B6;background:#FDF2F2}
+.mark-missed.active,.mark-missed:hover{background:#cc1016;color:#fff}
+.mark-clear{color:#5e5e5e}
+.tips{padding:0 14px 14px}
+.tips-title{font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.tips-wrap{display:flex;gap:6px;flex-wrap:wrap}
+.tip-chip{font-size:11px;padding:4px 8px;border-radius:12px;background:#F3F2EF;color:#38434F}
+.drawer-meta{font-size:12px;color:var(--li-muted);padding:0 14px 12px}
+
+.composer{display:flex;align-items:center;gap:12px;padding:14px;margin-bottom:12px}
+.composer input{flex:1;border:none;background:#F3F2EF;border-radius:24px;padding:12px 16px;font-size:14px;color:#666}
+.feed{display:flex;flex-direction:column;gap:12px}
+.feed-card{cursor:pointer}
+.feed-card:hover{box-shadow:0 4px 12px rgba(0,0,0,.08)}
+
+.team-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.team-card{padding:14px;border-radius:8px;border:1px solid var(--li-border);background:#fff}
+.tca{border-top:3px solid var(--a)}
+.tcb{border-top:3px solid var(--b)}
+.tcc{border-top:3px solid var(--c)}
+.tc-head{font-size:12px;font-weight:800;letter-spacing:.05em;margin-bottom:8px}
+.th-a{color:var(--a)} .th-b{color:var(--b)} .th-c{color:var(--c)}
+.tc-members{min-height:28px}
+.tc-empty{color:#9ca3af;font-size:12px;font-style:italic}
+.member-tag{display:inline-flex;align-items:center;gap:4px;font-size:12px;padding:3px 8px;border-radius:12px;margin:2px;font-weight:600;background:#F3F2EF}
+.del-m{border:none;background:transparent;color:#666;cursor:pointer}
+.add-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.add-row input,.add-row select{padding:9px 12px;border:1px solid var(--li-border);border-radius:8px;font-size:13px;outline:none;background:#fff}
+.add-row input{flex:1;min-width:160px}
+.btn{padding:9px 14px;border-radius:20px;font-size:13px;font-weight:700;border:1px solid}
+.btn-add{background:var(--li-blue);border-color:var(--li-blue);color:#fff}
+.btn-clr{background:#fff;border-color:#F0B6B6;color:#cc1016}
+
+.activity-list{display:flex;flex-direction:column;gap:8px;max-height:70vh;overflow:auto}
+.activity-row{display:flex;justify-content:space-between;gap:10px;padding:10px 12px;border-radius:8px;background:#F8F8F8}
+.activity-text{font-size:13px}
+.activity-time{font-size:11px;color:#9ca3af;white-space:nowrap}
+
+.streaks{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.streak{background:#fff;border-radius:8px;padding:12px;box-shadow:0 0 0 1px rgba(0,0,0,.08);text-align:center}
+.streak b{display:block;font-size:22px}
+.streak span{font-size:11px;color:var(--li-muted);font-weight:600}
+
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:25}
+.auth-screen{position:fixed;inset:0;background:#F3F2EF;z-index:80;display:flex;align-items:center;justify-content:center;padding:24px}
+.auth-screen.hidden{display:none}
+.auth-card{width:100%;max-width:420px;background:#fff;border-radius:12px;box-shadow:0 0 0 1px rgba(0,0,0,.08),0 16px 40px rgba(0,0,0,.12);padding:28px 28px 24px}
+.auth-card .li-mark{margin:0 auto 12px}
+.auth-card h1{text-align:center;font-size:22px;margin-bottom:4px}
+.auth-card .sub{text-align:center;color:var(--li-muted);font-size:13px;margin-bottom:18px}
+.auth-tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:#F3F2EF;padding:4px;border-radius:24px;margin-bottom:16px}
+.auth-tabs button{border:none;background:transparent;padding:8px;border-radius:20px;font-weight:700;color:#666}
+.auth-tabs button.active{background:#fff;color:var(--li-blue);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.auth-form{display:none;flex-direction:column;gap:10px}
+.auth-form.active{display:flex}
+.auth-form label{font-size:12px;font-weight:700;color:#38434F}
+.auth-form input,.auth-form select{width:100%;padding:11px 12px;border:1px solid var(--li-border);border-radius:8px;font-size:14px;outline:none}
+.auth-form input:focus,.auth-form select:focus{border-color:var(--li-blue)}
+.auth-form button[type=submit]{margin-top:6px;background:var(--li-blue);color:#fff;border:none;border-radius:24px;padding:12px;font-weight:800}
+.auth-error{display:none;margin-top:10px;background:#FBE9E7;color:#B74700;border-radius:8px;padding:8px 10px;font-size:13px;font-weight:600}
+.auth-error.show{display:block}
+.user-card{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.user-card .meta{min-width:0}
+.user-card .meta strong{display:block;font-size:13px}
+.user-card .meta span{font-size:11px;color:var(--li-muted)}
+.logout{width:100%;margin-top:8px;background:#fff;border:1px solid var(--li-border);border-radius:20px;padding:7px;font-weight:700;font-size:12px;color:#38434F}
+.people-table{width:100%;border-collapse:collapse}
+.people-table th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#6b7280;padding:8px 10px;border-bottom:1px solid var(--li-border)}
+.people-table td{padding:12px 10px;border-bottom:1px solid #F3F2EF;font-size:13px}
+.people-table tr.me{background:#E8F3FF}
+.you-pill{font-size:10px;background:var(--li-blue);color:#fff;border-radius:10px;padding:1px 6px;margin-left:6px;font-weight:700}
+.stat-pills{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+.stat-pills i{font-style:normal;background:#F3F2EF;border-radius:12px;padding:3px 8px;font-size:11px;font-weight:700;color:#38434F}
+
+.confetti-piece{position:fixed;width:8px;height:8px;border-radius:2px;pointer-events:none;animation:cfetti 1.2s ease-in forwards;z-index:9999}
+@keyframes cfetti{0%{opacity:1;transform:translateY(0) rotate(0)}100%{opacity:0;transform:translateY(220px) rotate(540deg)}}
+
+@media (max-width:980px){
+  .sidebar{position:fixed;left:0;transform:translateX(-100%);transition:transform .2s}
+  .sidebar.open{transform:none}
+  .overlay.show{display:block}
+  .menu-btn{display:block}
+  .calendar-layout,.team-grid,.streaks{grid-template-columns:1fr}
+  .legend{display:none}
+}
+</style>
+</head>
+<body>
+<div id="auth-screen" class="auth-screen">
+  <div class="auth-card">
+    <div class="li-mark">in</div>
+    <h1>Siox Transports</h1>
+    <p class="sub">Sign in so the floor can see who posted, copied, and missed.</p>
+    <div class="auth-tabs">
+      <button type="button" class="active" data-action="auth-tab" data-tab="login">Sign in</button>
+      <button type="button" data-action="auth-tab" data-tab="signup">Join now</button>
+    </div>
+    <form id="login-form" class="auth-form active">
+      <label for="login-username">Username</label>
+      <input id="login-username" name="username" autocomplete="username" required>
+      <label for="login-password">Password</label>
+      <input id="login-password" type="password" name="password" autocomplete="current-password" required>
+      <button type="submit">Sign in</button>
+    </form>
+    <form id="signup-form" class="auth-form">
+      <label for="signup-name">Full name</label>
+      <input id="signup-name" name="name" autocomplete="name" required>
+      <label for="signup-username">Username</label>
+      <input id="signup-username" name="username" autocomplete="username" required>
+      <label for="signup-password">Password</label>
+      <input id="signup-password" type="password" name="password" autocomplete="new-password" minlength="6" required>
+      <label for="signup-group">Your posting group</label>
+      <select id="signup-group" required>
+        <option value="a">Group A</option>
+        <option value="b">Group B</option>
+        <option value="c">Group C</option>
+      </select>
+      <button type="submit">Create account</button>
+    </form>
+    <div class="auth-error" id="auth-error"></div>
+  </div>
+</div>
+<h2 class="sr-only">LinkedIn posting calendar — Group A, B, C rotation starting Sep 9 2026 with tracking and streaks</h2>
+<div class="overlay" id="overlay" data-action="close-sidebar"></div>
+<div class="shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="li-mark">in</div>
+      <div class="brand-copy">
+        <strong>Siox Transports</strong>
+        <span>LinkedIn content calendar</span>
+      </div>
+    </div>
+    <nav class="nav">
+      <button type="button" class="nav-item active" data-action="view" data-view="calendar"><span class="nav-ico">🗓️</span> Calendar</button>
+      <button type="button" class="nav-item" data-action="view" data-view="posts"><span class="nav-ico">📝</span> Posts</button>
+      <button type="button" class="nav-item" data-action="view" data-view="people"><span class="nav-ico">🏆</span> People</button>
+      <button type="button" class="nav-item" data-action="view" data-view="team"><span class="nav-ico">👥</span> Team</button>
+      <button type="button" class="nav-item" data-action="view" data-view="activity"><span class="nav-ico">⚡</span> Activity</button>
+    </nav>
+    <div class="side-stats">
+      <h4>Posted this rotation</h4>
+      <div class="mini-stat"><span>Group A</span><b class="ga" id="stat-a">0</b></div>
+      <div class="mini-stat"><span>Group B</span><b class="gb" id="stat-b">0</b></div>
+      <div class="mini-stat"><span>Group C</span><b class="gc" id="stat-c">0</b></div>
+    </div>
+    <div class="side-user">
+      <div class="user-card">
+        <div class="avatar" id="me-avatar">ST</div>
+        <div class="meta">
+          <strong id="me-name">Not signed in</strong>
+          <span id="me-handle">Sign in to track posts</span>
+        </div>
+      </div>
+      <div class="stat-pills">
+        <i id="me-posted">0 posted</i>
+        <i id="me-copied">0 copied</i>
+      </div>
+      <button type="button" class="logout" data-action="logout">Sign out</button>
+      <div class="sync pending" id="sync-status"><span class="sync-dot"></span><span id="sync-text">Connecting…</span></div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button type="button" class="menu-btn" data-action="toggle-sidebar" aria-label="Menu">☰</button>
+      <div class="top-title">Content calendar <span>Organic posts · weekday rotation</span></div>
+      <div class="legend">
+        <span class="chip"><span class="dot a"></span>Group A</span>
+        <span class="chip"><span class="dot b"></span>Group B</span>
+        <span class="chip"><span class="dot c"></span>Group C</span>
+        <span class="chip"><span class="dot x"></span>No post</span>
+      </div>
+    </header>
+
+    <section class="view active" data-view="calendar">
+      <div class="page-head">
+        <div>
+          <h1>Posting calendar</h1>
+          <p>Click a weekday to open the LinkedIn post for that group.</p>
+        </div>
+        <div class="cal-nav">
+          <button type="button" class="cal-nav-btn" data-action="prev-month" aria-label="Previous month">‹</button>
+          <div class="month-display" id="month-display"></div>
+          <button type="button" class="cal-nav-btn" data-action="next-month" aria-label="Next month">›</button>
+        </div>
+      </div>
+      <div class="streaks">
+        <div class="streak"><b class="ga" id="streak-a">0</b><span>Group A streak</span></div>
+        <div class="streak"><b class="gb" id="streak-b">0</b><span>Group B streak</span></div>
+        <div class="streak"><b class="gc" id="streak-c">0</b><span>Group C streak</span></div>
+      </div>
+      <div class="calendar-layout">
+        <div class="card card-pad">
+          <div class="dow-row">
+            <div class="dow-hdr wknd">Sun</div>
+            <div class="dow-hdr">Mon</div>
+            <div class="dow-hdr">Tue</div>
+            <div class="dow-hdr">Wed</div>
+            <div class="dow-hdr">Thu</div>
+            <div class="dow-hdr">Fri</div>
+            <div class="dow-hdr wknd">Sat</div>
+          </div>
+          <div class="cal-grid" id="cal-grid"></div>
+        </div>
+        <div class="card post-panel">
+          <div class="empty-post" id="post-empty">
+            <strong>Select a posting day</strong>
+            Preview the LinkedIn post, copy it, then mark it posted for the floor.
+          </div>
+          <div id="drawer">
+            <div class="li-post">
+              <div class="li-head">
+                <div class="avatar" id="li-avatar">ST</div>
+                <div class="li-who">
+                  <h3 id="li-author">Siox Transports</h3>
+                  <p id="li-headline">Logistics · Group A</p>
+                  <small id="li-when">Scheduled · Public</small>
+                </div>
+                <button type="button" class="close-x" data-action="close-drawer" aria-label="Close">✕</button>
+              </div>
+              <div class="li-status st-sched" id="post-status-pill">Scheduled post</div>
+              <div class="li-body" id="d-post"></div>
+              <div class="sr-only" id="d-date"></div>
+              <div class="sr-only" id="d-grp"></div>
+              <div class="li-react"><span>Public · anyone on LinkedIn</span><span id="d-topic-label">Post</span></div>
+              <div class="li-actions">
+                <button type="button" class="li-act">👍 Like</button>
+                <button type="button" class="li-act">💬 Comment</button>
+                <button type="button" class="li-act">🔁 Repost</button>
+                <button type="button" class="li-act" data-action="copy-post">📤 Send</button>
+              </div>
+              <div class="mark-row">
+                <button type="button" class="copy-btn" data-action="copy-post">Copy post</button>
+                <button type="button" class="mark-btn mark-posted" id="btn-posted" data-action="mark" data-status="posted">Mark posted</button>
+                <button type="button" class="mark-btn mark-missed" id="btn-missed" data-action="mark" data-status="missed">Missed</button>
+              </div>
+              <div class="mark-row" style="padding-top:0">
+                <button type="button" class="mark-btn mark-clear" data-action="mark" data-status="clear">Clear status</button>
+              </div>
+              <div class="drawer-meta" id="d-meta"></div>
+              <div class="tips">
+                <div class="tips-title">Posting tips</div>
+                <div class="tips-wrap" id="d-tips"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" data-view="posts">
+      <div class="page-head">
+        <div>
+          <h1>LinkedIn posts</h1>
+          <p>Scheduled organic posts for this month, in feed format.</p>
+        </div>
+      </div>
+      <div class="card composer">
+        <div class="avatar" id="composer-avatar">ST</div>
+        <input type="text" readonly value="Start a post — pick a day from Calendar or a card below" >
+      </div>
+      <div class="feed" id="post-feed"></div>
+    </section>
+
+    <section class="view" data-view="people">
+      <div class="page-head">
+        <div>
+          <h1>Who posted</h1>
+          <p>Live scoreboard for the Siox floor — posts, misses, and copies by account.</p>
+        </div>
+      </div>
+      <div class="card card-pad">
+        <table class="people-table">
+          <thead>
+            <tr>
+              <th>Person</th>
+              <th>Group</th>
+              <th>Posted</th>
+              <th>Missed</th>
+              <th>Copied</th>
+              <th>Last seen</th>
+            </tr>
+          </thead>
+          <tbody id="people-body">
+            <tr><td colspan="6">Sign in to see who posted.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="view" data-view="team">
+      <div class="page-head">
+        <div>
+          <h1>Team groups</h1>
+          <p>Who posts on A, B, and C days.</p>
+        </div>
+      </div>
+      <div class="team-grid">
+        <div class="team-card tca"><div class="tc-head th-a">GROUP A</div><div class="tc-members" id="tm-a"></div></div>
+        <div class="team-card tcb"><div class="tc-head th-b">GROUP B</div><div class="tc-members" id="tm-b"></div></div>
+        <div class="team-card tcc"><div class="tc-head th-c">GROUP C</div><div class="tc-members" id="tm-c"></div></div>
+      </div>
+      <div class="add-row">
+        <input id="m-name" type="text" placeholder="Team member name">
+        <select id="m-grp">
+          <option value="a">Group A</option>
+          <option value="b">Group B</option>
+          <option value="c">Group C</option>
+        </select>
+        <button type="button" class="btn btn-add" data-action="add-member">+ Add</button>
+        <button type="button" class="btn btn-clr" data-action="clear-members">Clear all</button>
+      </div>
+    </section>
+
+    <section class="view" data-view="activity">
+      <div class="page-head">
+        <div>
+          <h1>Floor activity</h1>
+          <p>Who copied, posted, or changed the roster.</p>
+        </div>
+      </div>
+      <div class="card card-pad">
+        <div class="activity-list" id="activity-list">
+          <div class="activity-row"><div class="activity-text">Waiting for the first action…</div></div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+(function () {
+  const START = new Date(2026, 8, 9);
+  const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const TOKEN_KEY = "siox_token";
+  let apiBase = "";
+  let viewYear = 2026;
+  let viewMonth = 8;
+  let activeDay = null;
+  let activeGrp = null;
+  let activeTi = null;
+  const status = {};
+  const statusMeta = {};
+  const members = {a:[], b:[], c:[]};
+  let people = [];
+  let currentUser = null;
+  let authToken = localStorage.getItem(TOKEN_KEY) || "";
+  const IDLE_MS = 15 * 60 * 1000;
+  let idleTimer = null;
+  const TOPICS = {
+    A: [
+      {topic:"A freight win",post:"Helped a client move a time-sensitive shipment last week — they needed it across the country in 24 hours and we made it happen. No drama, no excuses, just execution.\n\nThat's what good logistics looks like. 🚚\n\n#Freight #Logistics #3PL"},
+      {topic:"Industry insight",post:"Something I've noticed talking to manufacturers in our region — the biggest freight pain isn't price. It's reliability.\n\nWhen a production line stops waiting for parts, the cost per hour is enormous. Carriers who show up on time, every time, are worth far more than the cheapest rate.\n\n#SupplyChain #Manufacturing"},
+      {topic:"Client shoutout",post:"Big shoutout to our team this week for pulling off a complex multi-stop delivery on zero notice.\n\nOur customers trust us because when things get hard, we don't disappear. Grateful for a crew that never flinches. 💪\n\n#Logistics #TeamWork"},
+      {topic:"Market update",post:"Freight rates in the Southeast corridor have been shifting lately. If you're a manufacturer moving components or finished goods through this region, now's a good time to re-benchmark your lanes.\n\nHappy to run a free comparison — no obligation, just numbers.\n\n#FreightRates #Logistics"},
+      {topic:"Day in the life",post:"6am — checking overnight load status\n8am — coordinating with a carrier on a late pickup\n11am — quoting a new manufacturing customer\n3pm — tracking a hot shipment for a client\n\nEvery day is different. That's why I love this work. ⚡\n\n#FreightLife #Logistics"}
+    ],
+    B: [
+      {topic:"How freight works",post:"A lot of people don't know this — when a manufacturer ships 'FOB Origin,' they're taking on all the freight risk the moment it leaves the supplier.\n\nThat means claims, delays, and damage are on them. Choosing the right carrier partner isn't optional — it's essential.\n\n#FreightTips #SupplyChain"},
+      {topic:"Behind the scenes",post:"Ever wonder what happens between 'shipment picked up' and 'delivered'?\n\nA lot. Driver coordination, dock scheduling, paperwork, weather re-routes, carrier check calls. It's organized chaos — and our team thrives in it. 🎯\n\n#3PL #Logistics"},
+      {topic:"Common mistakes",post:"Three freight mistakes I see manufacturers make all the time:\n\n1. Taking whatever carrier the supplier recommends\n2. Not tracking inbound shipments until something goes wrong\n3. Waiting until a load is hot to build carrier relationships\n\nPlanning ahead saves money and stress.\n\n#FreightTips #Manufacturing"},
+      {topic:"Value of 3PL",post:"Why use a 3PL instead of booking carriers directly?\n\n→ Access to hundreds of vetted carriers\n→ Market rate leverage\n→ Someone who answers the phone when things go sideways\n\nWe're not just moving freight — we're managing risk. 🛡\n\n#3PL #Logistics"},
+      {topic:"Win of the week",post:"Placed a difficult load this week — oversized industrial equipment, tight delivery window, remote destination.\n\nFound the right carrier in under two hours. Customer was shocked. That's what a deep carrier network looks like in action.\n\n#FreightWin #Logistics"}
+    ],
+    C: [
+      {topic:"Team culture",post:"The best part of working in logistics? Every day you solve a real problem for a real business.\n\nThat shipment we just delivered? It kept someone's production line running. Tangible. Immediate. Satisfying. 🙌\n\n#Logistics #FreightLife"},
+      {topic:"Customer tip",post:"If you're in manufacturing, here's a tip:\n\nBuild your freight vendor relationships BEFORE you're in a crisis.\n\nThe worst time to find a new carrier is when your primary one just cancelled and your line is down. We're here before the fire. 🔥\n\n#Manufacturing #SupplyChain"},
+      {topic:"Industry trend",post:"Domestic solar manufacturing is booming right now. New plants opening across Texas, Arizona, everywhere.\n\nThese facilities need serious logistics support — glass, frames, battery cells inbound, finished modules outbound. It's a freight niche wide open right now. ☀️\n\n#SolarEnergy #Freight"},
+      {topic:"Gratitude post",post:"Grateful this week for the customers who trust us with their most critical freight.\n\nWhen someone calls us at 7am with an emergency, and we deliver — that's the whole job. That's what we're here for. 🙏\n\n#Grateful #Logistics"},
+      {topic:"Ask a question",post:"Quick question for anyone in manufacturing or distribution:\n\nWhat's your biggest freight headache right now — finding reliable carriers, managing inbound costs, or something else entirely?\n\nDrop it below — genuinely curious. 👇\n\n#Manufacturing #SupplyChain"}
+    ]
+  };
+  const TIPS = {
+    A:["No hard pitch","Share a real story","End with a takeaway","Under 200 words","Use line breaks"],
+    B:["Educate don't sell","Show expertise naturally","Ask a question at end","Post 8–10am","Tag relevant people"],
+    C:["Be human and warm","Gratitude performs well","Invite comments","Short paragraphs","Keep tone conversational"]
+  };
+  const ACTIVITY_LABELS = {
+    session_start:"opened the tracker",
+    view_post:"opened a post draft",
+    copy_post:"copied a post",
+    mark_posted:"marked a day as posted",
+    mark_missed:"marked a day as missed",
+    mark_clear:"cleared a day status",
+    add_member:"added a team member",
+    remove_member:"removed a team member",
+    clear_members:"cleared all team members",
+    set_actor:"signed in",
+    signup:"created an account",
+    login:"signed in"
+  };
+
+  function escapeHtml(value) {
+    return String(value == null ? "" : value).replace(/[&<>"']/g, function (ch) {
+      return ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[ch];
+    });
+  }
+
+  function formatPostHtml(text) {
+    return escapeHtml(text).replace(/#([A-Za-z][A-Za-z0-9_]*)/g, '<span class="hash">#$1</span>').replace(/\n/g, "<br>");
+  }
+
+  function initials(name) {
+    return String(name || "ST").trim().split(/\s+/).map(function (w) { return w[0]; }).join("").slice(0, 2).toUpperCase() || "ST";
+  }
+
+  function authorForGroup(grp) {
+    if (currentUser && String(currentUser.group).toUpperCase() === String(grp).toUpperCase()) {
+      return currentUser.name;
+    }
+    const list = members[String(grp).toLowerCase()] || [];
+    if (list[0] && list[0].name) return list[0].name;
+    return "Group " + grp + " · Siox";
+  }
+
+  function statusKey(d) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return y + "-" + m + "-" + day;
+  }
+
+  function parseKey(key) {
+    const parts = String(key).split("-").map(Number);
+    return new Date(parts[0], parts[1] - 1, parts[2]);
+  }
+
+  function currentActor() {
+    return (currentUser && currentUser.name) || "Floor";
+  }
+
+  function showAuthError(message) {
+    const el = document.getElementById("auth-error");
+    el.textContent = message || "";
+    el.classList.toggle("show", Boolean(message));
+  }
+
+  function setAuthTab(tab) {
+    document.querySelectorAll("[data-action='auth-tab']").forEach(function (btn) {
+      btn.classList.toggle("active", btn.getAttribute("data-tab") === tab);
+    });
+    document.getElementById("login-form").classList.toggle("active", tab === "login");
+    document.getElementById("signup-form").classList.toggle("active", tab === "signup");
+    showAuthError("");
+  }
+
+  function applyMe() {
+    const name = currentUser ? currentUser.name : "Not signed in";
+    const handle = currentUser ? "@" + currentUser.username + " · Group " + String(currentUser.group || "").toUpperCase() : "Sign in to track posts";
+    document.getElementById("me-name").textContent = name;
+    document.getElementById("me-handle").textContent = handle;
+    document.getElementById("me-avatar").textContent = initials(name);
+    document.getElementById("composer-avatar").textContent = initials(name);
+    const mine = people.find(function (row) { return currentUser && row.id === currentUser.id; });
+    document.getElementById("me-posted").textContent = ((mine && mine.posted) || 0) + " posted";
+    document.getElementById("me-copied").textContent = ((mine && mine.copies) || 0) + " copied";
+    renderPeople();
+  }
+
+  function renderPeople() {
+    const body = document.getElementById("people-body");
+    if (!people.length) {
+      body.innerHTML = '<tr><td colspan="6">No accounts yet. Join now from the sign-in screen.</td></tr>';
+      return;
+    }
+    body.innerHTML = people.map(function (row) {
+      const mine = currentUser && row.id === currentUser.id;
+      const when = row.lastActive ? timeAgo(row.lastActive) : "—";
+      return '<tr class="' + (mine ? "me" : "") + '"><td><strong>' + escapeHtml(row.name) +
+        "</strong>" + (mine ? '<span class="you-pill">you</span>' : "") +
+        '<div style="color:#6b7280;font-size:11px">@' + escapeHtml(row.username) + "</div></td><td>Group " +
+        escapeHtml(String(row.group || "").toUpperCase()) + "</td><td><b>" + row.posted +
+        "</b></td><td>" + row.missed + "</td><td>" + row.copies + "</td><td>" + escapeHtml(when) + "</td></tr>";
+    }).join("");
+  }
+
+  function bumpIdle() {
+    if (!authToken) return;
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(function () {
+      logout("Signed out after 15 minutes idle. Sign in again.");
+    }, IDLE_MS);
+  }
+
+  function setLoggedIn(token, user) {
+    authToken = token;
+    currentUser = user;
+    localStorage.setItem(TOKEN_KEY, token);
+    document.getElementById("auth-screen").classList.add("hidden");
+    applyMe();
+    bumpIdle();
+  }
+
+  function logout(message) {
+    clearTimeout(idleTimer);
+    idleTimer = null;
+    authToken = "";
+    currentUser = null;
+    localStorage.removeItem(TOKEN_KEY);
+    document.getElementById("auth-screen").classList.remove("hidden");
+    setAuthTab("login");
+    showAuthError(message || "");
+  }
+
+  function setSync(state, text) {
+    const el = document.getElementById("sync-status");
+    el.className = "sync " + state;
+    document.getElementById("sync-text").textContent = text;
+  }
+
+  function persistLocal() {
+    try {
+      localStorage.setItem("siox_status", JSON.stringify(status));
+      localStorage.setItem("siox_meta", JSON.stringify(statusMeta));
+      localStorage.setItem("siox_members", JSON.stringify(members));
+    } catch (_err) {}
+  }
+
+  function loadLocal() {
+    try {
+      const savedStatus = JSON.parse(localStorage.getItem("siox_status") || "{}");
+      const savedMeta = JSON.parse(localStorage.getItem("siox_meta") || "{}");
+      const savedMembers = JSON.parse(localStorage.getItem("siox_members") || "{}");
+      Object.assign(status, savedStatus);
+      Object.assign(statusMeta, savedMeta);
+      members.a = savedMembers.a || [];
+      members.b = savedMembers.b || [];
+      members.c = savedMembers.c || [];
+    } catch (_err) {}
+  }
+
+  function weekdaySeq(d) {
+    const day = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const start = new Date(START.getFullYear(), START.getMonth(), START.getDate());
+    if (day < start) return null;
+    if (day.getDay() === 0 || day.getDay() === 6) return null;
+    let seq = 0;
+    const cur = new Date(start);
+    while (cur < day) {
+      const wd = cur.getDay();
+      if (wd !== 0 && wd !== 6) seq += 1;
+      cur.setDate(cur.getDate() + 1);
+    }
+    return seq;
+  }
+
+  function getGroup(d) {
+    const seq = weekdaySeq(d);
+    if (seq === null) return null;
+    return ["A", "B", "C"][seq % 3];
+  }
+
+  function getTopicIndex(d) {
+    const seq = weekdaySeq(d);
+    if (seq === null) return 0;
+    return Math.floor(seq / 3) % 5;
+  }
+
+  async function probeBase(base) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(function () { ctrl.abort(); }, 2500);
+    try {
+      const res = await fetch(base + "/api/health", { cache: "no-store", signal: ctrl.signal });
+      const data = await res.json().catch(function () { return {}; });
+      return res.ok && data.service === "siox-linkedin-tracker";
+    } catch (_err) {
+      return false;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  async function resolveApiBase() {
+    const candidates = [];
+    if (location.protocol === "http:" || location.protocol === "https:") {
+      candidates.push("");
+      candidates.push(location.protocol + "//" + location.hostname + ":3000");
+    }
+    candidates.push("http://localhost:3000");
+    candidates.push("http://127.0.0.1:3000");
+    for (let i = 0; i < candidates.length; i += 1) {
+      if (await probeBase(candidates[i])) return candidates[i];
+    }
+    return "http://localhost:3000";
+  }
+
+  async function api(path, opts) {
+    opts = opts || {};
+    const headers = {
+      "Content-Type": "application/json",
+      "X-Actor": currentActor()
+    };
+    if (authToken) headers.Authorization = "Bearer " + authToken;
+    const res = await fetch(apiBase + path, {
+      method: opts.method || "GET",
+      headers: headers,
+      body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined
+    });
+    const data = await res.json().catch(function () { return {}; });
+    if (res.status === 401 && authToken && path.indexOf("/api/auth/login") !== 0) {
+      logout("Session expired. Please sign in again.");
+    }
+    if (!res.ok) throw new Error(data.error || "Request failed");
+    return data;
+  }
+
+  async function track(type, details) {
+    try {
+      await api("/api/activity", { method: "POST", body: { type: type, details: details || {} } });
+      loadActivity();
+    } catch (_err) {}
+  }
+
+  async function submitLogin(event) {
+    event.preventDefault();
+    showAuthError("");
+    try {
+      const data = await api("/api/auth/login", {
+        method: "POST",
+        body: {
+          username: document.getElementById("login-username").value.trim(),
+          password: document.getElementById("login-password").value
+        }
+      });
+      setLoggedIn(data.token, data.user);
+      await loadApp();
+    } catch (err) {
+      showAuthError(err.message || "Could not sign in");
+    }
+  }
+
+  async function submitSignup(event) {
+    event.preventDefault();
+    showAuthError("");
+    try {
+      const data = await api("/api/auth/signup", {
+        method: "POST",
+        body: {
+          name: document.getElementById("signup-name").value.trim(),
+          username: document.getElementById("signup-username").value.trim(),
+          password: document.getElementById("signup-password").value,
+          group: document.getElementById("signup-group").value
+        }
+      });
+      setLoggedIn(data.token, data.user);
+      await loadApp();
+    } catch (err) {
+      showAuthError(err.message || "Could not create account");
+    }
+  }
+
+  function showView(name) {
+    document.querySelectorAll(".view").forEach(function (el) {
+      el.classList.toggle("active", el.getAttribute("data-view") === name);
+    });
+    document.querySelectorAll(".nav-item").forEach(function (el) {
+      el.classList.toggle("active", el.getAttribute("data-view") === name);
+    });
+    document.getElementById("sidebar").classList.remove("open");
+    document.getElementById("overlay").classList.remove("show");
+    if (name === "posts") renderPostFeed();
+    if (name === "people") renderPeople();
+  }
+
+  function toggleSidebar() {
+    document.getElementById("sidebar").classList.toggle("open");
+    document.getElementById("overlay").classList.toggle("show");
+  }
+
+  function renderCalendar() {
+    document.getElementById("month-display").textContent = MONTHS[viewMonth] + " " + viewYear;
+    const grid = document.getElementById("cal-grid");
+    grid.innerHTML = "";
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const first = new Date(viewYear, viewMonth, 1).getDay();
+    const dim = new Date(viewYear, viewMonth + 1, 0).getDate();
+    for (let i = 0; i < first; i += 1) {
+      const empty = document.createElement("div");
+      empty.className = "day empty";
+      grid.appendChild(empty);
+    }
+    for (let d = 1; d <= dim; d += 1) {
+      const dt = new Date(viewYear, viewMonth, d);
+      const grp = getGroup(dt);
+      const isWknd = dt.getDay() === 0 || dt.getDay() === 6;
+      const isPast = dt < today;
+      const isToday = dt.toDateString() === today.toDateString();
+      const key = statusKey(dt);
+      const st = status[key];
+      const el = document.createElement("div");
+      let cls = "day";
+      if (isWknd) cls += " wknd";
+      if (isPast && !isToday) cls += " past";
+      if (isToday) cls += " today-ring";
+      if (st === "posted") cls += " posted";
+      if (st === "missed") cls += " missed";
+      if (grp) cls += " has-post";
+      el.className = cls;
+      const ti = grp ? getTopicIndex(dt) : 0;
+      const topicName = grp ? TOPICS[grp][ti].topic : "";
+      const by = st === "posted" && statusMeta[key] && statusMeta[key].updatedBy
+        ? '<div class="day-by">' + escapeHtml(statusMeta[key].updatedBy) + "</div>"
+        : "";
+      el.innerHTML =
+        '<div class="day-num"><span>' + d + "</span>" +
+        (isToday ? '<span class="today-pill">TODAY</span>' : "") + "</div>" +
+        (grp ? '<span class="type-pill type-' + grp.toLowerCase() + '">Post · ' + grp + "</span><div class=\"day-topic\">" + escapeHtml(topicName) + "</div>" + by : "");
+      if (grp) {
+        el.dataset.date = key;
+        el.dataset.group = grp;
+        el.dataset.ti = String(ti);
+      }
+      grid.appendChild(el);
+    }
+    updateStats();
+    renderPostFeed();
+  }
+
+  function statusLabel(st) {
+    if (st === "posted") return { text: "Posted", cls: "st-posted" };
+    if (st === "missed") return { text: "Missed", cls: "st-missed" };
+    return { text: "Scheduled post", cls: "st-sched" };
+  }
+
+  function fillPostCard(dt, grp, ti) {
+    const t = TOPICS[grp][ti];
+    const author = authorForGroup(grp);
+    const st = status[statusKey(dt)] || "";
+    const pill = statusLabel(st);
+    document.getElementById("li-author").textContent = author;
+    document.getElementById("li-headline").textContent = "Siox Transports · Group " + grp + " · Logistics";
+    document.getElementById("li-avatar").textContent = initials(author);
+    document.getElementById("li-when").textContent = dt.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) + " · 8:00 AM · 🌐";
+    document.getElementById("d-post").innerHTML = formatPostHtml(t.post);
+    document.getElementById("d-date").textContent = dt.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+    document.getElementById("d-grp").textContent = "Group " + grp + " posts today · " + t.topic;
+    document.getElementById("d-topic-label").textContent = "Post · " + t.topic;
+    const statusEl = document.getElementById("post-status-pill");
+    statusEl.className = "li-status " + pill.cls;
+    statusEl.textContent = pill.text;
+    document.getElementById("d-tips").innerHTML = TIPS[grp].map(function (tip) {
+      return '<span class="tip-chip">' + escapeHtml(tip) + "</span>";
+    }).join("");
+    updateDrawerButtons(st);
+  }
+
+  function updateDrawerButtons(st) {
+    document.getElementById("btn-posted").className = "mark-btn mark-posted" + (st === "posted" ? " active" : "");
+    document.getElementById("btn-missed").className = "mark-btn mark-missed" + (st === "missed" ? " active" : "");
+    const key = activeDay ? statusKey(activeDay) : "";
+    const meta = statusMeta[key];
+    const metaEl = document.getElementById("d-meta");
+    if (meta && st) {
+      const when = meta.updatedAt ? new Date(meta.updatedAt).toLocaleString() : "";
+      metaEl.textContent = "Last updated by " + (meta.updatedBy || "Unknown") + (when ? " · " + when : "");
+    } else {
+      metaEl.textContent = "Not marked yet — the whole floor will see the update.";
+    }
+  }
+
+  function openDrawer(dt, grp, ti) {
+    activeDay = dt;
+    activeGrp = grp;
+    activeTi = ti;
+    fillPostCard(dt, grp, ti);
+    document.getElementById("drawer").classList.add("open");
+    document.getElementById("post-empty").style.display = "none";
+    document.getElementById("drawer").scrollIntoView({ behavior: "smooth", block: "nearest" });
+    track("view_post", { dateKey: statusKey(dt), group: grp, topic: TOPICS[grp][ti].topic });
+  }
+
+  function closeDrawer() {
+    document.getElementById("drawer").classList.remove("open");
+    document.getElementById("post-empty").style.display = "";
+    activeDay = null;
+  }
+
+  function renderPostFeed() {
+    const feed = document.getElementById("post-feed");
+    if (!feed) return;
+    const dim = new Date(viewYear, viewMonth + 1, 0).getDate();
+    let html = "";
+    for (let d = 1; d <= dim; d += 1) {
+      const dt = new Date(viewYear, viewMonth, d);
+      const grp = getGroup(dt);
+      if (!grp) continue;
+      const ti = getTopicIndex(dt);
+      const t = TOPICS[grp][ti];
+      const key = statusKey(dt);
+      const st = status[key] || "";
+      const pill = statusLabel(st);
+      const author = authorForGroup(grp);
+      html += '<article class="card li-post feed-card has-post" data-date="' + key + '" data-group="' + grp + '" data-ti="' + ti + '">' +
+        '<div class="li-head"><div class="avatar">' + escapeHtml(initials(author)) + '</div><div class="li-who"><h3>' +
+        escapeHtml(author) + '</h3><p>Siox Transports · Group ' + grp + '</p><small>' +
+        dt.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) +
+        ' · 8:00 AM · 🌐</small></div></div>' +
+        '<div class="li-status ' + pill.cls + '">' + pill.text + " · Post</div>" +
+        '<div class="li-body">' + formatPostHtml(t.post) + "</div>" +
+        '<div class="li-actions"><span class="li-act">👍 Like</span><span class="li-act">💬 Comment</span><span class="li-act">🔁 Repost</span><span class="li-act">📤 Send</span></div>' +
+        "</article>";
+    }
+    feed.innerHTML = html || '<div class="card card-pad">No scheduled posts in this month.</div>';
+  }
+
+  async function copyPost() {
+    if (!activeDay || !activeGrp) return;
+    const t = TOPICS[activeGrp][activeTi];
+    try {
+      await navigator.clipboard.writeText(t.post);
+    } catch (_err) {
+      const box = document.createElement("textarea");
+      box.value = t.post;
+      document.body.appendChild(box);
+      box.select();
+      document.execCommand("copy");
+      box.remove();
+    }
+    document.querySelectorAll('[data-action="copy-post"]').forEach(function (btn) {
+      if (btn.classList.contains("copy-btn")) {
+        btn.textContent = "Copied";
+        setTimeout(function () { btn.textContent = "Copy post"; }, 1400);
+      }
+    });
+    track("copy_post", { dateKey: statusKey(activeDay), group: activeGrp, topic: t.topic });
+    api("/api/people").then(function (data) {
+      people = data.people || people;
+      applyMe();
+    }).catch(function () {});
+  }
+
+  async function markDay(st) {
+    if (!activeDay || !activeGrp) return;
+    const key = statusKey(activeDay);
+    const topic = TOPICS[activeGrp][activeTi].topic;
+    const who = currentActor();
+    if (st === "clear") {
+      delete status[key];
+      delete statusMeta[key];
+    } else {
+      status[key] = st;
+      statusMeta[key] = { updatedBy: who, updatedAt: new Date().toISOString(), group: activeGrp, topic: topic };
+    }
+    persistLocal();
+    if (st === "posted") confetti();
+    renderCalendar();
+    fillPostCard(activeDay, activeGrp, activeTi);
+    updateStreaks();
+    setSync("pending", "Saving…");
+    try {
+      const saved = await api("/api/days/" + key, {
+        method: "PUT",
+        body: { status: st, actor: who, group: activeGrp, topic: topic }
+      });
+      if (st === "clear" || !saved.status) {
+        delete status[key];
+        delete statusMeta[key];
+      } else {
+        status[key] = saved.status;
+        statusMeta[key] = { updatedBy: saved.updatedBy, updatedAt: saved.updatedAt, group: activeGrp, topic: topic };
+      }
+      persistLocal();
+      renderCalendar();
+      fillPostCard(activeDay, activeGrp, activeTi);
+      updateStreaks();
+      if (saved.people) people = saved.people;
+      applyMe();
+      setSync("ok", "Saved to floor");
+      loadActivity();
+    } catch (_err) {
+      setSync("err", "Saved on this desk. Other desks will see it after MongoDB connects.");
+    }
+  }
+
+  function updateStats() {
+    let a = 0, b = 0, c = 0;
+    Object.keys(status).forEach(function (k) {
+      if (status[k] !== "posted") return;
+      const g = getGroup(parseKey(k));
+      if (g === "A") a += 1;
+      else if (g === "B") b += 1;
+      else if (g === "C") c += 1;
+    });
+    document.getElementById("stat-a").textContent = a;
+    document.getElementById("stat-b").textContent = b;
+    document.getElementById("stat-c").textContent = c;
+  }
+
+  function updateStreaks() {
+    const streaks = {A:0, B:0, C:0};
+    const d = new Date(START);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    while (d <= today) {
+      const g = getGroup(d);
+      if (g) {
+        const st = status[statusKey(d)];
+        if (st === "posted") streaks[g] += 1;
+        else if (st === "missed") streaks[g] = 0;
+      }
+      d.setDate(d.getDate() + 1);
+    }
+    document.getElementById("streak-a").textContent = streaks.A;
+    document.getElementById("streak-b").textContent = streaks.B;
+    document.getElementById("streak-c").textContent = streaks.C;
+  }
+
+  function confetti() {
+    const colors = ["#0A66C2","#057642","#E7A33E","#70B5F9","#cc1016"];
+    for (let i = 0; i < 28; i += 1) {
+      const p = document.createElement("div");
+      p.className = "confetti-piece";
+      p.style.cssText = "left:" + (Math.random() * 100) + "vw;top:" + (Math.random() * 30 + 10) + "vh;background:" + colors[Math.floor(Math.random() * colors.length)] + ";animation-delay:" + (Math.random() * 0.4) + "s";
+      document.body.appendChild(p);
+      setTimeout(function () { p.remove(); }, 1600);
+    }
+  }
+
+  function renderMembers() {
+    ["a", "b", "c"].forEach(function (g) {
+      const el = document.getElementById("tm-" + g);
+      if (!members[g].length) {
+        el.innerHTML = '<span class="tc-empty">No members yet</span>';
+        return;
+      }
+      el.innerHTML = members[g].map(function (m) {
+        return '<span class="member-tag">' + escapeHtml(m.name) +
+          '<button type="button" class="del-m" data-action="del-member" data-id="' + escapeHtml(m.id) + '" aria-label="Remove">✕</button></span>';
+      }).join("");
+    });
+  }
+
+  async function addMember() {
+    const name = (document.getElementById("m-name").value || "").trim();
+    const g = document.getElementById("m-grp").value;
+    if (!name) {
+      showView("team");
+      document.getElementById("m-name").focus();
+      return;
+    }
+    const localPerson = { id: "local-" + Date.now(), name: name, group: g, addedBy: currentActor() };
+    members[g].push(localPerson);
+    document.getElementById("m-name").value = "";
+    persistLocal();
+    renderMembers();
+    setSync("pending", "Saving…");
+    try {
+      const person = await api("/api/members", { method: "POST", body: { name: name, group: g, actor: currentActor() } });
+      members[g] = members[g].filter(function (m) { return m.id !== localPerson.id; });
+      members[g].push(person);
+      persistLocal();
+      renderMembers();
+      setSync("ok", "Saved to floor");
+      loadActivity();
+    } catch (_err) {
+      setSync("err", "Saved on this desk. Other desks will see it after MongoDB connects.");
+    }
+  }
+
+  async function delMember(id) {
+    ["a", "b", "c"].forEach(function (g) {
+      members[g] = members[g].filter(function (m) { return m.id !== id; });
+    });
+    persistLocal();
+    renderMembers();
+    if (String(id).indexOf("local-") === 0) return;
+    try {
+      await api("/api/members/" + encodeURIComponent(id), { method: "DELETE", body: { actor: currentActor() } });
+      setSync("ok", "Saved to floor");
+      loadActivity();
+    } catch (_err) {
+      setSync("err", "Removed on this desk");
+    }
+  }
+
+  async function clearAll() {
+    if (!window.confirm("Clear every team member for the whole floor?")) return;
+    members.a = [];
+    members.b = [];
+    members.c = [];
+    persistLocal();
+    renderMembers();
+    try {
+      await api("/api/members", { method: "DELETE", body: { actor: currentActor() } });
+      setSync("ok", "Saved to floor");
+      loadActivity();
+    } catch (_err) {
+      setSync("err", "Cleared on this desk");
+    }
+  }
+
+  function prevMonth() {
+    viewMonth -= 1;
+    if (viewMonth < 0) { viewMonth = 11; viewYear -= 1; }
+    renderCalendar();
+  }
+
+  function nextMonth() {
+    viewMonth += 1;
+    if (viewMonth > 11) { viewMonth = 0; viewYear += 1; }
+    renderCalendar();
+  }
+
+  function timeAgo(iso) {
+    const diff = Date.now() - new Date(iso).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return "just now";
+    if (mins < 60) return mins + "m ago";
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return hrs + "h ago";
+    return Math.floor(hrs / 24) + "d ago";
+  }
+
+  function activityLine(item) {
+    const base = ACTIVITY_LABELS[item.type] || String(item.type).replace(/_/g, " ");
+    const d = item.details || {};
+    if (d.dateKey) return item.actor + " " + base + " (" + d.dateKey + (d.group ? " · Group " + d.group : "") + ")";
+    if (d.name) return item.actor + " " + base + ": " + d.name + (d.group ? " · Group " + String(d.group).toUpperCase() : "");
+    return item.actor + " " + base;
+  }
+
+  async function loadActivity() {
+    try {
+      const data = await api("/api/activity?limit=40");
+      const list = document.getElementById("activity-list");
+      if (!data.activities || !data.activities.length) {
+        list.innerHTML = '<div class="activity-row"><div class="activity-text">Waiting for the first action…</div></div>';
+        return;
+      }
+      list.innerHTML = data.activities.map(function (item) {
+        return '<div class="activity-row"><div class="activity-text">' + escapeHtml(activityLine(item)) +
+          '</div><div class="activity-time">' + escapeHtml(timeAgo(item.createdAt)) + "</div></div>";
+      }).join("");
+    } catch (_err) {}
+  }
+
+  function bindEvents() {
+    document.addEventListener("click", function (event) {
+      const actionEl = event.target.closest("[data-action]");
+      if (actionEl) {
+        const action = actionEl.getAttribute("data-action");
+        if (action === "prev-month") prevMonth();
+        else if (action === "next-month") nextMonth();
+        else if (action === "close-drawer") closeDrawer();
+        else if (action === "copy-post") copyPost();
+        else if (action === "mark") markDay(actionEl.getAttribute("data-status"));
+        else if (action === "add-member") addMember();
+        else if (action === "clear-members") clearAll();
+        else if (action === "logout") logout();
+        else if (action === "auth-tab") setAuthTab(actionEl.getAttribute("data-tab"));
+        else if (action === "del-member") delMember(actionEl.getAttribute("data-id"));
+        else if (action === "view") showView(actionEl.getAttribute("data-view"));
+        else if (action === "toggle-sidebar") toggleSidebar();
+        else if (action === "close-sidebar") {
+          document.getElementById("sidebar").classList.remove("open");
+          document.getElementById("overlay").classList.remove("show");
+        }
+        return;
+      }
+      const day = event.target.closest(".has-post");
+      if (day && day.dataset.date) {
+        showView("calendar");
+        openDrawer(parseKey(day.dataset.date), day.dataset.group, Number(day.dataset.ti));
+      }
+    });
+    document.getElementById("m-name").addEventListener("keydown", function (event) {
+      if (event.key === "Enter") addMember();
+    });
+    document.getElementById("login-form").addEventListener("submit", submitLogin);
+    document.getElementById("signup-form").addEventListener("submit", submitSignup);
+    ["click", "keydown", "mousemove", "scroll", "touchstart"].forEach(function (evt) {
+      document.addEventListener(evt, bumpIdle, { passive: true });
+    });
+  }
+
+  window.prevMonth = prevMonth;
+  window.nextMonth = nextMonth;
+  window.closeDrawer = closeDrawer;
+  window.copyPost = copyPost;
+  window.markDay = markDay;
+  window.addMember = addMember;
+  window.clearAll = clearAll;
+  window.delMember = delMember;
+
+  function applyState(data) {
+    Object.keys(status).forEach(function (k) { delete status[k]; });
+    Object.keys(statusMeta).forEach(function (k) { delete statusMeta[k]; });
+    Object.assign(status, data.statuses || {});
+    Object.assign(statusMeta, data.statusMeta || {});
+    members.a = data.members && data.members.a ? data.members.a : [];
+    members.b = data.members && data.members.b ? data.members.b : [];
+    members.c = data.members && data.members.c ? data.members.c : [];
+    if (data.people) people = data.people;
+    persistLocal();
+    renderCalendar();
+    updateStreaks();
+    renderMembers();
+    applyMe();
+    if (activeDay) fillPostCard(activeDay, activeGrp, activeTi);
+  }
+
+  async function loadApp() {
+    setSync("pending", "Connecting…");
+    try {
+      const me = await api("/api/auth/me");
+      currentUser = me.user;
+      const data = await api("/api/state");
+      applyState(data);
+      setSync("ok", "Signed in as " + currentUser.name);
+      track("session_start", {});
+      loadActivity();
+      bumpIdle();
+    } catch (err) {
+      if (!authToken) {
+        document.getElementById("auth-screen").classList.remove("hidden");
+        showAuthError(err.message || "Sign in required");
+      } else {
+        setSync("err", err.message || "Could not load the floor tracker");
+      }
+    }
+  }
+
+  async function boot() {
+    bindEvents();
+    loadLocal();
+    renderCalendar();
+    updateStreaks();
+    renderMembers();
+    applyMe();
+    apiBase = await resolveApiBase();
+    try {
+      const health = await api("/api/health");
+      if (health.db !== "connected") {
+        showAuthError("MongoDB Atlas is blocking this PC. Allow this IP, then Join now.");
+      }
+    } catch (_err) {}
+    if (!authToken) {
+      document.getElementById("auth-screen").classList.remove("hidden");
+      return;
+    }
+    document.getElementById("auth-screen").classList.add("hidden");
+    await loadApp();
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
+  else boot();
+
+  setInterval(function () {
+    if (!authToken) return;
+    api("/api/state").then(function (data) {
+      applyState(data);
+    }).catch(function () {});
+    loadActivity();
+  }, 15000);
+})();
+</script>
+</body>
+</html>
