@@ -547,6 +547,30 @@ app.put('/api/days/:dateKey', requireAuth, async (req, res) => {
     const actor = actorFrom(req);
     const group = ['A', 'B', 'C'].includes(req.body.group) ? req.body.group : null;
     const topic = typeof req.body.topic === 'string' ? req.body.topic.slice(0, 120) : '';
+    const existing = await DayStatus.findOne({ dateKey });
+
+    if (existing) {
+      const ownerId = existing.userId ? String(existing.userId) : '';
+      const isOwner = ownerId
+        ? ownerId === String(req.user.id)
+        : Boolean(existing.updatedBy && req.user.name &&
+            String(existing.updatedBy).toLowerCase() === String(req.user.name).toLowerCase());
+      let isAdminUser = req.user.role === 'admin';
+      if (!isAdminUser) {
+        const me = await User.findById(req.user.id).select('role');
+        isAdminUser = Boolean(me && me.role === 'admin');
+      }
+      if (!isOwner && !isAdminUser) {
+        return res.status(403).json({
+          error: 'Only ' + (existing.updatedBy || 'the person who marked this') + ' can change this day',
+          dateKey: existing.dateKey,
+          status: existing.status,
+          updatedBy: existing.updatedBy,
+          userId: ownerId || null,
+          updatedAt: existing.updatedAt
+        });
+      }
+    }
 
     if (!nextStatus) {
       await DayStatus.deleteOne({ dateKey });

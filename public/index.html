@@ -157,6 +157,7 @@ button{cursor:pointer}
 .mark-missed{color:#B74700;border-color:#F0B6B6;background:#FDF2F2}
 .mark-missed.active,.mark-missed:hover{background:#cc1016;color:#fff}
 .mark-clear{color:#5e5e5e}
+.mark-btn:disabled,.copy-btn:disabled{opacity:.45;cursor:not-allowed}
 .tips{padding:0 14px 14px}
 .tips-title{font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
 .tips-wrap{display:flex;gap:6px;flex-wrap:wrap}
@@ -394,7 +395,7 @@ button{cursor:pointer}
                 <button type="button" class="mark-btn mark-missed" id="btn-missed" data-action="mark" data-status="missed">Missed</button>
               </div>
               <div class="mark-row" style="padding-top:0">
-                <button type="button" class="mark-btn mark-clear" data-action="mark" data-status="clear">Clear status</button>
+                <button type="button" class="mark-btn mark-clear" id="btn-clear" data-action="mark" data-status="clear">Clear status</button>
               </div>
               <div class="drawer-meta" id="d-meta"></div>
               <div class="tips">
@@ -1009,17 +1010,37 @@ button{cursor:pointer}
     updateDrawerButtons(st);
   }
 
+  function ownsDay(meta) {
+    if (!meta) return true;
+    if (isAdmin()) return true;
+    if (!currentUser) return false;
+    if (meta.userId) return String(meta.userId) === String(currentUser.id);
+    return Boolean(meta.updatedBy && currentUser.name &&
+      String(meta.updatedBy).toLowerCase() === String(currentUser.name).toLowerCase());
+  }
+
   function updateDrawerButtons(st) {
     document.getElementById("btn-posted").className = "mark-btn mark-posted" + (st === "posted" ? " active" : "");
     document.getElementById("btn-missed").className = "mark-btn mark-missed" + (st === "missed" ? " active" : "");
     const key = activeDay ? statusKey(activeDay) : "";
     const meta = statusMeta[key];
+    const mine = !st || ownsDay(meta);
+    document.getElementById("btn-posted").disabled = !mine;
+    document.getElementById("btn-missed").disabled = !mine;
+    document.getElementById("btn-clear").disabled = !st || !mine;
     const metaEl = document.getElementById("d-meta");
     if (meta && st) {
       const when = meta.updatedAt ? new Date(meta.updatedAt).toLocaleString() : "";
-      metaEl.textContent = "Last updated by " + (meta.updatedBy || "Unknown") + (when ? " · " + when : "");
+      const who = meta.updatedBy || "Unknown";
+      if (mine && currentUser && meta.userId === currentUser.id) {
+        metaEl.textContent = "You marked this" + (when ? " · " + when : "") + ". Clear removes only your record.";
+      } else if (mine) {
+        metaEl.textContent = "Last updated by " + who + (when ? " · " + when : "");
+      } else {
+        metaEl.textContent = "Marked by " + who + " — only they can change or clear this.";
+      }
     } else {
-      metaEl.textContent = "Not marked yet — the whole floor will see the update.";
+      metaEl.textContent = "Not marked yet — marking posted here counts as your record.";
     }
   }
 
@@ -1099,12 +1120,24 @@ button{cursor:pointer}
     const key = statusKey(activeDay);
     const topic = TOPICS[activeGrp][activeTi].topic;
     const who = currentActor();
+    const prevStatus = status[key];
+    const prevMeta = statusMeta[key] ? Object.assign({}, statusMeta[key]) : null;
+    if (prevStatus && !ownsDay(prevMeta)) {
+      setSync("err", "Only " + ((prevMeta && prevMeta.updatedBy) || "the person who marked this") + " can change this day");
+      return;
+    }
     if (st === "clear") {
       delete status[key];
       delete statusMeta[key];
     } else {
       status[key] = st;
-      statusMeta[key] = { updatedBy: who, updatedAt: new Date().toISOString(), group: activeGrp, topic: topic };
+      statusMeta[key] = {
+        updatedBy: who,
+        updatedAt: new Date().toISOString(),
+        group: activeGrp,
+        topic: topic,
+        userId: currentUser ? currentUser.id : null
+      };
     }
     persistLocal();
     if (st === "posted") confetti();
@@ -1122,7 +1155,13 @@ button{cursor:pointer}
         delete statusMeta[key];
       } else {
         status[key] = saved.status;
-        statusMeta[key] = { updatedBy: saved.updatedBy, updatedAt: saved.updatedAt, group: activeGrp, topic: topic };
+        statusMeta[key] = {
+          updatedBy: saved.updatedBy,
+          updatedAt: saved.updatedAt,
+          group: activeGrp,
+          topic: topic,
+          userId: saved.userId || (currentUser && currentUser.id) || null
+        };
       }
       persistLocal();
       renderCalendar();
@@ -1132,8 +1171,19 @@ button{cursor:pointer}
       applyMe();
       setSync("ok", "Saved to floor");
       loadActivity();
-    } catch (_err) {
-      setSync("err", "Saved on this desk. Other desks will see it after MongoDB connects.");
+    } catch (err) {
+      if (prevStatus) {
+        status[key] = prevStatus;
+        if (prevMeta) statusMeta[key] = prevMeta;
+      } else {
+        delete status[key];
+        delete statusMeta[key];
+      }
+      persistLocal();
+      renderCalendar();
+      fillPostCard(activeDay, activeGrp, activeTi);
+      updateStreaks();
+      setSync("err", err.message || "Could not update this day");
     }
   }
 
