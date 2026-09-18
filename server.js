@@ -30,6 +30,7 @@ const userSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true, lowercase: true, trim: true },
   passwordHash: { type: String, required: true },
   group: { type: String, enum: ['a', 'b', 'c'], required: true },
+  role: { type: String, enum: ['user', 'admin'], default: 'user', index: true },
   lastLoginAt: { type: Date, default: Date.now },
   createdAt: { type: Date, default: Date.now }
 });
@@ -83,7 +84,7 @@ function bearerToken(req) {
 
 function signUser(user) {
   return jwt.sign(
-    { id: String(user._id), name: user.name, username: user.username, group: user.group },
+    { id: String(user._id), name: user.name, username: user.username, group: user.group, role: user.role || 'user' },
     JWT_SECRET,
     { expiresIn: '30d' }
   );
@@ -94,8 +95,22 @@ function serializeUser(user) {
     id: String(user._id),
     name: user.name,
     username: user.username,
-    group: user.group
+    group: user.group,
+    role: user.role || 'user'
   };
+}
+
+async function requireAdmin(req, res, next) {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user || user.role !== 'admin') {
+      return res.status(403).json({ error: 'Admins only' });
+    }
+    req.user.role = 'admin';
+    next();
+  } catch (_err) {
+    res.status(500).json({ error: 'Could not verify admin' });
+  }
 }
 
 function requireAuth(req, res, next) {
@@ -185,6 +200,7 @@ async function peopleStats() {
       name: user.name,
       username: user.username,
       group: user.group,
+      role: user.role || 'user',
       posted: postedMap[id] || 0,
       missed: missedMap[id] || 0,
       copies: copyMap[id] || 0,
@@ -227,7 +243,7 @@ app.post('/api/auth/signup', async (req, res) => {
     if (exists) return res.status(409).json({ error: 'That username is already taken' });
 
     const passwordHash = await bcrypt.hash(password, 10);
-    const user = await User.create({ name, username, passwordHash, group });
+    const user = await User.create({ name, username, passwordHash, group, role: 'user' });
     const token = signUser(user);
     await Activity.create({
       type: 'signup',
@@ -294,6 +310,190 @@ app.get('/api/people', requireAuth, async (_req, res) => {
   } catch (err) {
     console.error('GET /api/people', err);
     res.status(500).json({ error: 'Could not load people' });
+  }
+});
+
+function ymdValid(value) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(String(value || ''));
+}
+
+function weekdaySlots(fromKey, toKey) {
+  const floorStart = new Date(2026, 8, 9);
+  const from = new Date(fromKey + 'T00:00:00');
+  const to = new Date(toKey + 'T00:00:00');
+  let count = 0;
+  const groups = { A: 0, B: 0, C: 0 };
+  const cur = new Date(from);
+  let seq = 0;
+  const walker = new Date(floorStart);
+  while (walker < from) {
+    if (walker.getDay() !== 0 && walker.getDay() !== 6) seq += 1;
+    walker.setDate(walker.getDate() + 1);
+  }
+  while (cur <= to) {
+    if (cur >= floorStart && cur.getDay() !== 0 && cur.getDay() !== 6) {
+      const grp = ['A', 'B', 'C'][seq % 3];
+      groups[grp] += 1;
+      count += 1;
+      seq += 1;
+    }
+    cur.setDate(cur.getDate() + 1);
+  }
+  return { count, groups };
+}
+
+app.get('/api/analytics', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const today = new Date();
+    const defaultFrom = '2026-09-09';
+    const defaultTo = [
+      today.getFullYear(),
+      String(today.getMonth() + 1).padStart(2, '0'),
+      String(today.getDate()).padStart(2, '0')
+    ].join('-');
+    const from = ymdValid(req.query.from) ? req.query.from : defaultFrom;
+    const to = ymdValid(req.query.to) ? req.query.to : defaultTo;
+    const statusFilter = ['posted', 'missed', 'all'].includes(req.query.status) ? req.query.status : 'all';
+    const groupFilter = ['A', 'B', 'C'].includes(req.query.group) ? req.query.group : '';
+    const userId = String(req.query.userId || '').trim();
+
+    const dayQuery = { dateKey: { $gte: from, $lte: to } };
+    if (groupFilter) dayQuery.group = groupFilter;
+    if (userId) dayQuery.userId = userId;
+
+    const actQuery = {
+      createdAt: {
+        $gte: new Date(from + 'T00:00:00.000Z'),
+        $lte: new Date(to + 'T23:59:59.999Z')
+      }
+    };
+    if (userId) actQuery.userId = userId;
+
+    const [allDays, activities, users] = await Promise.all([
+      DayStatus.find(dayQuery).sort({ dateKey: 1 }).lean(),
+      Activity.find(actQuery).lean(),
+      User.find().select('name username group role').lean()
+    ]);
+    const days = statusFilter === 'all' ? allDays : allDays.filter((day) => day.status === statusFilter);
+
+    const byPerson = {};
+    for (const user of users) {
+      byPerson[String(user._id)] = {
+        id: String(user._id),
+        name: user.name,
+        username: user.username,
+        group: user.group,
+        role: user.role || 'user',
+        posted: 0,
+        missed: 0,
+        copies: 0,
+        views: 0,
+        logins: 0
+      };
+    }
+
+    const byGroup = {
+      A: { posted: 0, missed: 0 },
+      B: { posted: 0, missed: 0 },
+      C: { posted: 0, missed: 0 }
+    };
+    const byTopic = {};
+    const byDay = {};
+    let posted = 0;
+    let missed = 0;
+
+    for (const day of allDays) {
+      if (day.status === 'posted') posted += 1;
+      if (day.status === 'missed') missed += 1;
+      if (day.group && byGroup[day.group]) byGroup[day.group][day.status] += 1;
+      const uid = day.userId ? String(day.userId) : '';
+      if (uid && byPerson[uid] && (day.status === 'posted' || day.status === 'missed')) {
+        byPerson[uid][day.status] += 1;
+      }
+    }
+
+    for (const day of days) {
+      const topic = day.topic || 'Untitled';
+      byTopic[topic] = (byTopic[topic] || 0) + 1;
+      byDay[day.dateKey] = byDay[day.dateKey] || { posted: 0, missed: 0 };
+      byDay[day.dateKey][day.status] += 1;
+    }
+
+    let copies = 0;
+    let views = 0;
+    let logins = 0;
+    for (const row of activities) {
+      const uid = row.userId ? String(row.userId) : '';
+      if (row.type === 'copy_post') {
+        copies += 1;
+        if (uid && byPerson[uid]) byPerson[uid].copies += 1;
+      }
+      if (row.type === 'view_post') {
+        views += 1;
+        if (uid && byPerson[uid]) byPerson[uid].views += 1;
+      }
+      if (row.type === 'login') {
+        logins += 1;
+        if (uid && byPerson[uid]) byPerson[uid].logins += 1;
+      }
+    }
+
+    const slots = weekdaySlots(from, to);
+    ['A', 'B', 'C'].forEach((grp) => {
+      byGroup[grp].planned = slots.groups[grp] || 0;
+      byGroup[grp].unmarked = Math.max(byGroup[grp].planned - byGroup[grp].posted - byGroup[grp].missed, 0);
+    });
+    const planned = groupFilter ? slots.groups[groupFilter] : slots.count;
+    const completion = planned ? Math.round((posted / planned) * 100) : 0;
+    const people = Object.values(byPerson)
+      .filter((row) => {
+        if (userId && row.id !== userId) return false;
+        if (groupFilter && String(row.group).toUpperCase() !== groupFilter) return false;
+        return true;
+      })
+      .sort((a, b) => b.posted - a.posted || a.name.localeCompare(b.name));
+
+    const topics = Object.entries(byTopic)
+      .map(([topic, count]) => ({ topic, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 8);
+
+    const timeline = Object.keys(byDay).sort().map((dateKey) => ({
+      dateKey,
+      posted: byDay[dateKey].posted,
+      missed: byDay[dateKey].missed
+    }));
+
+    res.json({
+      filters: { from, to, status: statusFilter, group: groupFilter || 'all', userId: userId || '' },
+      summary: {
+        posted,
+        missed,
+        copies,
+        views,
+        logins,
+        planned,
+        unmarked: Math.max(planned - posted - missed, 0),
+        completion,
+        activePosters: people.filter((row) => row.posted > 0).length
+      },
+      byGroup,
+      people,
+      topics,
+      timeline,
+      rows: days.map((day) => ({
+        dateKey: day.dateKey,
+        status: day.status,
+        group: day.group,
+        topic: day.topic,
+        updatedBy: day.updatedBy,
+        userId: day.userId ? String(day.userId) : null,
+        updatedAt: day.updatedAt
+      }))
+    });
+  } catch (err) {
+    console.error('GET /api/analytics', err);
+    res.status(500).json({ error: 'Could not load analytics' });
   }
 });
 
@@ -464,11 +664,33 @@ app.get('/', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+async function ensureAdmin() {
+  const username = String(process.env.ADMIN_USERNAME || 'priya').trim().toLowerCase();
+  if (username) {
+    const promoted = await User.findOneAndUpdate(
+      { username },
+      { $set: { role: 'admin' } },
+      { new: true }
+    );
+    if (promoted) console.log('Admin account:', promoted.username);
+  }
+  const hasAdmin = await User.exists({ role: 'admin' });
+  if (!hasAdmin) {
+    const first = await User.findOne().sort({ createdAt: 1 });
+    if (first) {
+      first.role = 'admin';
+      await first.save();
+      console.log('First user promoted to admin:', first.username);
+    }
+  }
+}
+
 async function connectDb() {
   if (dbReady() || mongoose.connection.readyState === 2) return;
   try {
     await mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 8000 });
     console.log('MongoDB connected');
+    await ensureAdmin();
   } catch (err) {
     console.error('MongoDB not connected yet:', err.message);
   }

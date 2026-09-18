@@ -36,7 +36,31 @@ button{cursor:pointer}
 .nav-item{display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:none;background:transparent;color:#38434F;padding:10px 12px;border-radius:8px;font-size:14px;font-weight:600}
 .nav-item:hover{background:#F3F2EF}
 .nav-item.active{background:#E8F3FF;color:var(--li-blue)}
+.nav-item.admin-only{display:none}
+.nav-item.admin-only.show{display:flex}
 .nav-ico{width:22px;text-align:center;font-size:16px}
+.role-pill{display:inline-block;font-size:10px;background:#1B1F23;color:#fff;border-radius:10px;padding:1px 6px;margin-left:6px;font-weight:700;vertical-align:middle}
+.role-pill.admin{background:var(--li-blue)}
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+.kpi{background:#fff;border-radius:8px;padding:14px;box-shadow:0 0 0 1px rgba(0,0,0,.08)}
+.kpi b{display:block;font-size:24px;letter-spacing:-.4px}
+.kpi span{font-size:11px;color:var(--li-muted);font-weight:600}
+.filters{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;align-items:flex-end}
+.filters label{font-size:11px;font-weight:700;color:#6b7280;display:flex;flex-direction:column;gap:4px}
+.filters input,.filters select{padding:8px 10px;border:1px solid var(--li-border);border-radius:8px;font-size:13px;background:#fff;min-width:130px}
+.filter-presets{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.filter-presets button{border:1px solid var(--li-border);background:#fff;border-radius:16px;padding:6px 10px;font-size:12px;font-weight:700;color:#38434F}
+.filter-presets button:hover,.filter-presets button.active{background:#E8F3FF;border-color:#70B5F9;color:var(--li-blue)}
+.analytics-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+.bar-row{display:flex;align-items:center;gap:8px;margin:8px 0}
+.bar-label{width:92px;font-size:12px;font-weight:700}
+.bar-track{flex:1;height:10px;background:#F3F2EF;border-radius:6px;overflow:hidden}
+.bar-fill{height:100%;background:var(--li-blue);border-radius:6px}
+.bar-fill.missed{background:#cc1016}
+.bar-fill.group-b{background:var(--b)}
+.bar-fill.group-c{background:var(--c)}
+.bar-num{width:40px;text-align:right;font-size:12px;font-weight:700}
+.muted-note{font-size:12px;color:var(--li-muted);padding:8px 0}
 .side-stats{margin:auto 12px 12px;background:var(--li-bg);border-radius:10px;padding:12px}
 .side-stats h4{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--li-muted);margin-bottom:8px}
 .mini-stat{display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:6px 0;border-bottom:1px solid #e8e6e2}
@@ -212,7 +236,8 @@ button{cursor:pointer}
   .sidebar.open{transform:none}
   .overlay.show{display:block}
   .menu-btn{display:block}
-  .calendar-layout,.team-grid,.streaks{grid-template-columns:1fr}
+  .calendar-layout,.team-grid,.streaks,.analytics-grid,.kpi-grid{grid-template-columns:1fr}
+  .kpi-grid{grid-template-columns:1fr 1fr}
   .legend{display:none}
 }
 </style>
@@ -267,6 +292,7 @@ button{cursor:pointer}
       <button type="button" class="nav-item active" data-action="view" data-view="calendar"><span class="nav-ico">🗓️</span> Calendar</button>
       <button type="button" class="nav-item" data-action="view" data-view="posts"><span class="nav-ico">📝</span> Posts</button>
       <button type="button" class="nav-item" data-action="view" data-view="people"><span class="nav-ico">🏆</span> People</button>
+      <button type="button" class="nav-item admin-only" data-action="view" data-view="analytics"><span class="nav-ico">📊</span> Analytics</button>
       <button type="button" class="nav-item" data-action="view" data-view="team"><span class="nav-ico">👥</span> Team</button>
       <button type="button" class="nav-item" data-action="view" data-view="activity"><span class="nav-ico">⚡</span> Activity</button>
     </nav>
@@ -445,6 +471,87 @@ button{cursor:pointer}
       </div>
     </section>
 
+    <section class="view" data-view="analytics">
+      <div class="page-head">
+        <div>
+          <h1>Analytics</h1>
+          <p>Admin view — who posted, missed, and how the rotation is tracking.</p>
+        </div>
+        <button type="button" class="btn btn-add" data-action="analytics-csv">Export CSV</button>
+      </div>
+      <div class="filter-presets">
+        <button type="button" data-action="analytics-preset" data-preset="rotation">Full rotation</button>
+        <button type="button" data-action="analytics-preset" data-preset="month">This month</button>
+        <button type="button" data-action="analytics-preset" data-preset="week">This week</button>
+        <button type="button" data-action="analytics-preset" data-preset="30">Last 30 days</button>
+      </div>
+      <div class="filters card card-pad">
+        <label>From
+          <input type="date" id="an-from">
+        </label>
+        <label>To
+          <input type="date" id="an-to">
+        </label>
+        <label>Status
+          <select id="an-status">
+            <option value="all">All statuses</option>
+            <option value="posted">Posted</option>
+            <option value="missed">Missed</option>
+          </select>
+        </label>
+        <label>Group
+          <select id="an-group">
+            <option value="">All groups</option>
+            <option value="A">Group A</option>
+            <option value="B">Group B</option>
+            <option value="C">Group C</option>
+          </select>
+        </label>
+        <label>Person
+          <select id="an-user">
+            <option value="">Everyone</option>
+          </select>
+        </label>
+        <button type="button" class="btn btn-add" data-action="analytics-apply">Apply filters</button>
+      </div>
+      <div class="kpi-grid" id="an-kpis"></div>
+      <div class="analytics-grid">
+        <div class="card card-pad">
+          <h3 style="font-size:14px;margin-bottom:8px">Posts by person</h3>
+          <div id="an-people-bars"></div>
+        </div>
+        <div class="card card-pad">
+          <h3 style="font-size:14px;margin-bottom:8px">By group</h3>
+          <div id="an-group-bars"></div>
+        </div>
+      </div>
+      <div class="analytics-grid">
+        <div class="card card-pad">
+          <h3 style="font-size:14px;margin-bottom:8px">Topics covered</h3>
+          <div id="an-topics"></div>
+        </div>
+        <div class="card card-pad">
+          <h3 style="font-size:14px;margin-bottom:8px">Daily trend</h3>
+          <div id="an-timeline"></div>
+        </div>
+      </div>
+      <div class="card card-pad">
+        <h3 style="font-size:14px;margin-bottom:8px">Day-by-day log</h3>
+        <table class="people-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Status</th>
+              <th>Group</th>
+              <th>Topic</th>
+              <th>Updated by</th>
+            </tr>
+          </thead>
+          <tbody id="an-rows"></tbody>
+        </table>
+      </div>
+    </section>
+
     <section class="view" data-view="activity">
       <div class="page-head">
         <div>
@@ -477,6 +584,7 @@ button{cursor:pointer}
   const members = {a:[], b:[], c:[]};
   let people = [];
   let currentUser = null;
+  let analyticsData = null;
   let authToken = localStorage.getItem(TOKEN_KEY) || "";
   const IDLE_MS = 15 * 60 * 1000;
   let idleTimer = null;
@@ -577,9 +685,14 @@ button{cursor:pointer}
     showAuthError("");
   }
 
+  function isAdmin() {
+    return Boolean(currentUser && currentUser.role === "admin");
+  }
+
   function applyMe() {
     const name = currentUser ? currentUser.name : "Not signed in";
-    const handle = currentUser ? "@" + currentUser.username + " · Group " + String(currentUser.group || "").toUpperCase() : "Sign in to track posts";
+    let handle = currentUser ? "@" + currentUser.username + " · Group " + String(currentUser.group || "").toUpperCase() : "Sign in to track posts";
+    if (isAdmin()) handle += " · Admin";
     document.getElementById("me-name").textContent = name;
     document.getElementById("me-handle").textContent = handle;
     document.getElementById("me-avatar").textContent = initials(name);
@@ -587,6 +700,14 @@ button{cursor:pointer}
     const mine = people.find(function (row) { return currentUser && row.id === currentUser.id; });
     document.getElementById("me-posted").textContent = ((mine && mine.posted) || 0) + " posted";
     document.getElementById("me-copied").textContent = ((mine && mine.copies) || 0) + " copied";
+    document.querySelectorAll(".admin-only").forEach(function (el) {
+      el.classList.toggle("show", isAdmin());
+    });
+    if (!isAdmin()) {
+      const analyticsView = document.querySelector('.view[data-view="analytics"]');
+      if (analyticsView && analyticsView.classList.contains("active")) showView("calendar");
+    }
+    fillAnalyticsPeople();
     renderPeople();
   }
 
@@ -601,6 +722,7 @@ button{cursor:pointer}
       const when = row.lastActive ? timeAgo(row.lastActive) : "—";
       return '<tr class="' + (mine ? "me" : "") + '"><td><strong>' + escapeHtml(row.name) +
         "</strong>" + (mine ? '<span class="you-pill">you</span>' : "") +
+        (row.role === "admin" ? '<span class="role-pill admin">admin</span>' : "") +
         '<div style="color:#6b7280;font-size:11px">@' + escapeHtml(row.username) + "</div></td><td>Group " +
         escapeHtml(String(row.group || "").toUpperCase()) + "</td><td><b>" + row.posted +
         "</b></td><td>" + row.missed + "</td><td>" + row.copies + "</td><td>" + escapeHtml(when) + "</td></tr>";
@@ -633,6 +755,8 @@ button{cursor:pointer}
     document.getElementById("auth-screen").classList.remove("hidden");
     setAuthTab("login");
     showAuthError(message || "");
+    document.querySelectorAll(".admin-only").forEach(function (el) { el.classList.remove("show"); });
+    showView("calendar");
   }
 
   function setSync(state, text) {
@@ -793,6 +917,13 @@ button{cursor:pointer}
     document.getElementById("overlay").classList.remove("show");
     if (name === "posts") renderPostFeed();
     if (name === "people") renderPeople();
+    if (name === "analytics") {
+      if (!isAdmin()) {
+        showView("calendar");
+        return;
+      }
+      loadAnalytics();
+    }
   }
 
   function toggleSidebar() {
@@ -1168,6 +1299,166 @@ button{cursor:pointer}
     } catch (_err) {}
   }
 
+  function fillAnalyticsPeople() {
+    const sel = document.getElementById("an-user");
+    if (!sel) return;
+    const current = sel.value;
+    sel.innerHTML = '<option value="">Everyone</option>' + people.map(function (row) {
+      return '<option value="' + escapeHtml(row.id) + '">' + escapeHtml(row.name) + " (@" + escapeHtml(row.username) + ")</option>";
+    }).join("");
+    if (current) sel.value = current;
+  }
+
+  function initAnalyticsFilters() {
+    const fromEl = document.getElementById("an-from");
+    const toEl = document.getElementById("an-to");
+    if (fromEl && !fromEl.value) fromEl.value = "2026-09-09";
+    if (toEl && !toEl.value) toEl.value = statusKey(new Date());
+    fillAnalyticsPeople();
+  }
+
+  function analyticsQuery() {
+    const params = new URLSearchParams();
+    const from = document.getElementById("an-from").value;
+    const to = document.getElementById("an-to").value;
+    const statusVal = document.getElementById("an-status").value;
+    const group = document.getElementById("an-group").value;
+    const userId = document.getElementById("an-user").value;
+    if (from) params.set("from", from);
+    if (to) params.set("to", to);
+    if (statusVal) params.set("status", statusVal);
+    if (group) params.set("group", group);
+    if (userId) params.set("userId", userId);
+    return params.toString();
+  }
+
+  function barHtml(label, value, max, extraClass) {
+    const pct = max ? Math.round((Number(value) / max) * 100) : 0;
+    return '<div class="bar-row"><div class="bar-label">' + escapeHtml(label) +
+      '</div><div class="bar-track"><div class="bar-fill ' + (extraClass || "") +
+      '" style="width:' + pct + '%"></div></div><div class="bar-num">' + value + "</div></div>";
+  }
+
+  function renderAnalytics() {
+    const data = analyticsData;
+    const kpis = document.getElementById("an-kpis");
+    if (!data) {
+      kpis.innerHTML = '<div class="muted-note">Loading analytics…</div>';
+      return;
+    }
+    const s = data.summary;
+    kpis.innerHTML = [
+      ["Posted", s.posted],
+      ["Missed", s.missed],
+      ["Unmarked", s.unmarked],
+      ["Completion", s.completion + "%"],
+      ["Planned days", s.planned],
+      ["Active posters", s.activePosters],
+      ["Copies", s.copies],
+      ["Logins", s.logins]
+    ].map(function (item) {
+      return '<div class="kpi"><b>' + escapeHtml(String(item[1])) + "</b><span>" + item[0] + "</span></div>";
+    }).join("");
+
+    const postedCounts = data.people.map(function (p) { return p.posted; });
+    const maxPosted = Math.max.apply(null, postedCounts.concat([1]));
+    document.getElementById("an-people-bars").innerHTML = data.people.length
+      ? data.people.map(function (p) {
+          return barHtml(p.name, p.posted, maxPosted) +
+            '<div class="muted-note" style="margin:-4px 0 8px 92px">' + p.missed + " missed · " +
+            p.copies + " copies · Group " + String(p.group || "").toUpperCase() +
+            (p.role === "admin" ? " · Admin" : "") + "</div>";
+        }).join("")
+      : '<div class="muted-note">No people in this filter.</div>';
+
+    const groups = data.byGroup;
+    const maxG = Math.max(groups.A.posted, groups.B.posted, groups.C.posted, 1);
+    document.getElementById("an-group-bars").innerHTML = ["A", "B", "C"].map(function (g) {
+      const row = groups[g];
+      const extra = g === "B" ? "group-b" : g === "C" ? "group-c" : "";
+      return barHtml("Group " + g, row.posted, maxG, extra) +
+        '<div class="muted-note" style="margin:-4px 0 8px 92px">' + row.missed + " missed · " +
+        (row.unmarked || 0) + " unmarked of " + (row.planned || 0) + " planned</div>";
+    }).join("");
+
+    document.getElementById("an-topics").innerHTML = data.topics.length
+      ? data.topics.map(function (t) {
+          return barHtml(t.topic, t.count, data.topics[0].count);
+        }).join("")
+      : '<div class="muted-note">No topics in this range.</div>';
+
+    const dayTotals = data.timeline.map(function (d) { return d.posted + d.missed; });
+    const maxDay = Math.max.apply(null, dayTotals.concat([1]));
+    document.getElementById("an-timeline").innerHTML = data.timeline.length
+      ? data.timeline.map(function (d) {
+          return barHtml(d.dateKey.slice(5), d.posted, maxDay) +
+            (d.missed ? '<div class="muted-note" style="margin:-4px 0 8px 92px">' + d.missed + " missed</div>" : "");
+        }).join("")
+      : '<div class="muted-note">No marked days yet.</div>';
+
+    const body = document.getElementById("an-rows");
+    if (!data.rows.length) {
+      body.innerHTML = '<tr><td colspan="5">No days match these filters.</td></tr>';
+    } else {
+      body.innerHTML = data.rows.map(function (row) {
+        return "<tr><td>" + escapeHtml(row.dateKey) + "</td><td>" + escapeHtml(row.status) +
+          "</td><td>Group " + escapeHtml(row.group || "—") + "</td><td>" +
+          escapeHtml(row.topic || "—") + "</td><td>" + escapeHtml(row.updatedBy || "—") + "</td></tr>";
+      }).join("");
+    }
+  }
+
+  async function loadAnalytics() {
+    if (!isAdmin()) return;
+    initAnalyticsFilters();
+    try {
+      analyticsData = await api("/api/analytics?" + analyticsQuery());
+      renderAnalytics();
+    } catch (err) {
+      document.getElementById("an-kpis").innerHTML = '<div class="muted-note">' +
+        escapeHtml(err.message || "Could not load analytics") + "</div>";
+    }
+  }
+
+  function applyAnalyticsPreset(preset) {
+    const today = new Date();
+    document.getElementById("an-to").value = statusKey(today);
+    if (preset === "rotation") document.getElementById("an-from").value = "2026-09-09";
+    else if (preset === "month") document.getElementById("an-from").value = statusKey(new Date(today.getFullYear(), today.getMonth(), 1));
+    else if (preset === "week") {
+      const d = new Date(today);
+      const day = d.getDay() || 7;
+      d.setDate(d.getDate() - day + 1);
+      document.getElementById("an-from").value = statusKey(d);
+    } else if (preset === "30") {
+      const d = new Date(today);
+      d.setDate(d.getDate() - 29);
+      document.getElementById("an-from").value = statusKey(d);
+    }
+    loadAnalytics();
+  }
+
+  function exportAnalyticsCsv() {
+    if (!analyticsData || !analyticsData.rows) return;
+    const lines = [["Date", "Status", "Group", "Topic", "Updated by"].join(",")].concat(
+      analyticsData.rows.map(function (row) {
+        return [
+          row.dateKey,
+          row.status,
+          row.group || "",
+          '"' + String(row.topic || "").replace(/"/g, '""') + '"',
+          '"' + String(row.updatedBy || "").replace(/"/g, '""') + '"'
+        ].join(",");
+      })
+    );
+    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "siox-analytics.csv";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
   function bindEvents() {
     document.addEventListener("click", function (event) {
       const actionEl = event.target.closest("[data-action]");
@@ -1184,6 +1475,9 @@ button{cursor:pointer}
         else if (action === "auth-tab") setAuthTab(actionEl.getAttribute("data-tab"));
         else if (action === "del-member") delMember(actionEl.getAttribute("data-id"));
         else if (action === "view") showView(actionEl.getAttribute("data-view"));
+        else if (action === "analytics-apply") loadAnalytics();
+        else if (action === "analytics-csv") exportAnalyticsCsv();
+        else if (action === "analytics-preset") applyAnalyticsPreset(actionEl.getAttribute("data-preset"));
         else if (action === "toggle-sidebar") toggleSidebar();
         else if (action === "close-sidebar") {
           document.getElementById("sidebar").classList.remove("open");
@@ -1202,6 +1496,11 @@ button{cursor:pointer}
     });
     document.getElementById("login-form").addEventListener("submit", submitLogin);
     document.getElementById("signup-form").addEventListener("submit", submitSignup);
+    ["an-status", "an-group", "an-user"].forEach(function (id) {
+      document.getElementById(id).addEventListener("change", function () {
+        if (isAdmin()) loadAnalytics();
+      });
+    });
     ["click", "keydown", "mousemove", "scroll", "touchstart"].forEach(function (evt) {
       document.addEventListener(evt, bumpIdle, { passive: true });
     });
@@ -1285,6 +1584,8 @@ button{cursor:pointer}
       applyState(data);
     }).catch(function () {});
     loadActivity();
+    const analyticsView = document.querySelector('.view[data-view="analytics"]');
+    if (analyticsView && analyticsView.classList.contains("active") && isAdmin()) loadAnalytics();
   }, 15000);
 })();
 </script>

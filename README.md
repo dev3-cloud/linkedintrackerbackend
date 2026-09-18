@@ -17,7 +17,10 @@ Create a `.env` file (do not commit it):
 PORT=3000
 MONGODB_URI=mongodb+srv://USER:PASS@cluster0.xxxxx.mongodb.net/siox_linkedin?retryWrites=true&w=majority
 JWT_SECRET=a-long-random-secret
+ADMIN_USERNAME=priya
 ```
+
+Signups are `user` by default. Set `ADMIN_USERNAME` to promote that account to admin (Analytics tab).
 
 ## Deploy on Render (free)
 
@@ -28,5 +31,6 @@ JWT_SECRET=a-long-random-secret
 5. Environment variables:
    - `MONGODB_URI` — Atlas connection string
    - `JWT_SECRET` — any long random string
+   - `ADMIN_USERNAME` — username that should be admin (optional)
 
 Render sets `PORT` automatically.
